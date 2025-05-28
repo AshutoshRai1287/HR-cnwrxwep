@@ -1,42 +1,31 @@
-import React from 'react';
-import { AppProvider, useAppContext } from './context/AppContext';
-import MainLayout from './components/Layout/MainLayout';
-import Dashboard from './pages/Dashboard';
-import Employees from './pages/Employees';
-import PfManagement from './pages/PfManagement';
-import AccountManagement from './pages/AccountManagement';
-
-const AppContent: React.FC = () => {
-  const { activeTab } = useAppContext();
-  
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'employees':
-        return <Employees />;
-      case 'pf':
-        return <PfManagement />;
-      case 'accounts':
-        return <AccountManagement />;
-      default:
-        return <Dashboard />;
-    }
-  };
-  
-  return (
-    <MainLayout>
-      {renderContent()}
-    </MainLayout>
-  );
-};
+import React, { useEffect } from 'react';
+import { useAuthStore } from './store/authStore';
+import { supabase } from './lib/supabase';
+import LoginForm from './components/auth/LoginForm';
+import Dashboard from './components/Dashboard';
 
 function App() {
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  );
+  const { user, setUser } = useAuthStore();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setUser]);
+
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  return <Dashboard />;
 }
 
 export default App;
